@@ -1,0 +1,40 @@
+name: sight_poject
+description: "A new Flutter project."
+publish_to: 'none' 
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.3 <4.0.0'
+
+dependencies:
+  camera: ^0.11.0+1
+  cupertino_icons: ^1.0.6
+  flutter:
+    sdk: flutter
+  flutter_mjpeg: ^2.0.4
+  flutter_tts: ^4.0.0
+  google_mlkit_face_detection: ^0.10.1
+  google_mlkit_text_recognition: ^0.13.0
+  image: ^4.2.0
+  image_picker: ^1.1.2
+  path_provider: ^2.1.3
+  provider: ^6.1.2
+  screenshot: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
+
+  
+  fonts:
+    - family: Jost
+
+      fonts:
+        - asset: fonts/Jost-600-Semi.ttf

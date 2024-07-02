@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:sight_poject/provider/screenshot_provider.dart';
 import 'package:sight_poject/textrecognition/resultface.dart';
 import 'package:sight_poject/textrecognition/resulttext.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:speech_to_text/speech_to_text.dart';
 
 class ResultImage extends StatefulWidget {
   const ResultImage({Key? key}) : super(key: key);
@@ -22,6 +24,77 @@ class _ResultImageState extends State<ResultImage> {
   final TextRecognizer _textRecognizer = TextRecognizer();
   final String luxandToken =
       '0d5386591c22477fa88518de84a5866e'; // Replace with your Luxand token
+
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  String _command = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+    _listen();
+  }
+
+  Future<void> _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) => print('onStatus: $val'),
+        onError: (val) {
+          print('onError: $val');
+          _listen();
+        },
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) => setState(() {
+            _command = val.recognizedWords;
+            _handleVoiceCommand(_command);
+          }),
+          listenOptions: stt.SpeechListenOptions(
+            listenMode: stt.ListenMode.dictation,
+          ),
+        );
+      }
+    } else {
+      _speech.listen(
+        onResult: (val) => setState(() {
+          _command = val.recognizedWords;
+          _handleVoiceCommand(_command);
+        }),
+      );
+    }
+  }
+
+  void _handleVoiceCommand(String command) async {
+    final imageBytes =
+        Provider.of<ScreenshotProvider>(context, listen: false).screenshot;
+    if (imageBytes == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No image to process')));
+      return;
+    }
+
+    if (command.contains('detect')) {
+      final imageBytes =
+          Provider.of<ScreenshotProvider>(context, listen: false).screenshot;
+      if (imageBytes != null) {
+        await _recognizeFaces(imageBytes);
+        _listen();
+      }
+    } else if (command.contains('register')) {
+      final name = await _getNameFromUser();
+      if (name != null && name.isNotEmpty) {
+        await _enrollPerson(imageBytes, name);
+      }
+      _listen();
+    } else if (command.contains('extract text')) {
+      await _recognizeTextFromImage(imageBytes);
+      _listen();
+    } else if (command.contains('return')) {}
+    _listen();
+  }
 
   Future<File> _convertUint8ListToFile(Uint8List imageBytes) async {
     final tempDir = await getTemporaryDirectory();
@@ -148,6 +221,10 @@ class _ResultImageState extends State<ResultImage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('Result Image'),
+        actions: [],
+      ),
       body: Center(
         child: SingleChildScrollView(
           child: Column(
@@ -160,10 +237,9 @@ class _ResultImageState extends State<ResultImage> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
-                  final imageBytes = Provider.of<ScreenshotProvider>(
-                    context,
-                    listen: false,
-                  ).screenshot;
+                  final imageBytes =
+                      Provider.of<ScreenshotProvider>(context, listen: false)
+                          .screenshot;
                   if (imageBytes != null) {
                     await _recognizeTextFromImage(imageBytes);
                   } else {
@@ -187,10 +263,9 @@ class _ResultImageState extends State<ResultImage> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
-                  final imageBytes = Provider.of<ScreenshotProvider>(
-                    context,
-                    listen: false,
-                  ).screenshot;
+                  final imageBytes =
+                      Provider.of<ScreenshotProvider>(context, listen: false)
+                          .screenshot;
                   if (imageBytes != null) {
                     final name = await _getNameFromUser();
                     if (name != null && name.isNotEmpty) {
@@ -203,7 +278,7 @@ class _ResultImageState extends State<ResultImage> {
                   }
                 },
                 child: Text(
-                  'Enroll Person',
+                  'register Person',
                   style: TextStyle(
                     color: Colors.white,
                   ),
@@ -217,19 +292,14 @@ class _ResultImageState extends State<ResultImage> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
-                  final imageBytes = Provider.of<ScreenshotProvider>(
-                    context,
-                    listen: false,
-                  ).screenshot;
+                  final imageBytes =
+                      Provider.of<ScreenshotProvider>(context, listen: false)
+                          .screenshot;
                   if (imageBytes != null) {
                     await _recognizeFaces(imageBytes);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                        'No image to process',
-                        style: TextStyle(color: Colors.white),
-                      )),
+                      SnackBar(content: Text('No image to process')),
                     );
                   }
                 },
@@ -238,7 +308,7 @@ class _ResultImageState extends State<ResultImage> {
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(
+                  backgroundColor: MaterialStateProperty.all(
                     Color(0xff8EB870),
                   ),
                 ),

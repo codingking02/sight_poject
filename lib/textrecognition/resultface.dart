@@ -1,7 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:sight_poject/provider/screenshot_provider.dart';
 
 class Resultface extends StatelessWidget {
   final String imagePath;
@@ -29,11 +33,8 @@ class Resultface extends StatelessWidget {
           ),
           for (var face in faces) _buildFaceInfo(face),
           Container(
-            width: 500,
-            height: 500,
-            child: Image.file(
-              File(imagePath),
-              fit: BoxFit.fill,
+            child: Image.memory(
+              context.watch<ScreenshotProvider>().screenshot!,
             ),
           ),
         ],
@@ -72,5 +73,12 @@ class Resultface extends StatelessWidget {
     }
 
     return 'Unknown';
+  }
+
+  Future<File> _convertUint8ListToFile(Uint8List imageBytes) async {
+    final tempDir = await getTemporaryDirectory();
+    final file = await File('${tempDir.path}/image.jpg').create();
+    file.writeAsBytesSync(imageBytes);
+    return file;
   }
 }

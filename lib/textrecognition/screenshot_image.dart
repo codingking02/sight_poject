@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter_mjpeg/flutter_mjpeg.dart';
+import 'package:mqtt_client/mqtt_client.dart';
+import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -16,6 +19,12 @@ class ScreenshotPage extends StatefulWidget {
 class _ScreenshotPageState extends State<ScreenshotPage> {
   ScreenshotController screenshotController = ScreenshotController();
   bool isRunning = true;
+  late MqttServerClient client;
+  @override
+  void initState() {
+    super.initState();
+    setupMqttClient();
+  }
 
   void _takeScreenshot() async {
     final directory = (await getApplicationDocumentsDirectory()).path;
@@ -60,6 +69,8 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     });
   }
 
+  var isrunning = true;
+
   @override
   Widget build(BuildContext context) {
     final screenshot = Provider.of<ScreenshotProvider>(context);
@@ -76,8 +87,9 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
               children: <Widget>[
                 Screenshot(
                   controller: screenshotController,
-                  child: Image.asset(
-                    "assets/khalil1.jpeg",
+                  child: Mjpeg(
+                    isLive: isRunning,
+                    stream: 'http://192.168.1.11:81/stream',
                   ),
                 ),
                 // Image.asset(
@@ -106,5 +118,53 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
         );
       },
     );
+  }
+
+  Future<void> setupMqttClient() async {
+    client = MqttServerClient('broker.emqx.io', '');
+    client.port = 1883;
+    client.keepAlivePeriod = 60;
+    client.onConnected = onConnected;
+    client.onDisconnected = onDisconnected;
+    client.onSubscribed = onSubscribed;
+    client.logging(on: true);
+
+    final connMessage = MqttConnectMessage()
+        .withClientIdentifier('FlutterClient')
+        .startClean()
+        .withWillQos(MqttQos.atMostOnce);
+    client.connectionMessage = connMessage;
+
+    try {
+      await client.connect();
+    } catch (e) {
+      print('Exception: $e');
+      client.disconnect();
+    }
+
+    client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> c) {
+      final MqttPublishMessage recMess = c[0].payload as MqttPublishMessage;
+      final pt =
+          MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+
+      if (pt == 'capture') {
+        print('Capture signal received');
+        _takeScreenshot();
+        // Trigger the capture button action here
+      }
+    });
+  }
+
+  void onConnected() {
+    print('Connected to MQTT broker');
+    client.subscribe('esp32/cam/capture', MqttQos.atMostOnce);
+  }
+
+  void onDisconnected() {
+    print('Disconnected from MQTT broker');
+  }
+
+  void onSubscribed(String topic) {
+    print('Subscribed to $topic');
   }
 }

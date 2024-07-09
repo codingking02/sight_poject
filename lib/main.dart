@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sight_poject/provider/screenshot_provider.dart';
+import 'package:sight_poject/splashscreen.dart';
 import 'package:sight_poject/textrecognition/screenshot_image.dart';
 
 void main() async {
@@ -22,7 +23,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Flutter Text Recognition',
-      home: ScreenshotPage(),
+      home: SplashScreen(),
     );
   }
 }

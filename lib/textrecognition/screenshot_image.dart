@@ -89,7 +89,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
                   controller: screenshotController,
                   child: Mjpeg(
                     isLive: isRunning,
-                    stream: 'http://192.168.1.11:81/stream',
+                    stream: 'http://192.168.210.94:81/stream',
                   ),
                 ),
                 // Image.asset(
